@@ -1,0 +1,10 @@
+Open Sans
+Copyright 2020 The Open Sans Project Authors
+https://github.com/googlefonts/opensans
+
+Licensed under the Apache License, Version 2.0.
+https://www.apache.org/licenses/LICENSE-2.0
+
+OpenSans-Variable-latin.woff2 is the latin subset of the Open Sans variable font as
+served by Google Fonts (v44). The weight axis spans 300-800, so this single file covers
+every weight the widget uses.

@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link rel="icon" type="image/svg+xml" href="resources/icon.svg" />
+<title>tr('Business Info Center')</title>
+
+<!-- Calendar. Paste the private ICS address from Google Calendar settings; the widget
+     rewrites calendar.google.com URLs onto the local proxy automatically. -->
+<meta name="x-icue-property" content="calendarUrl1"
+      data-label="tr('Calendar 1')" data-type="textfield" data-default="''"
+      data-placeholder="tr('Google Calendar secret ICS address')" />
+<meta name="x-icue-property" content="calendarUrl2"
+      data-label="tr('Calendar 2')" data-type="textfield" data-default="''"
+      data-placeholder="tr('Optional')" />
+<meta name="x-icue-property" content="calendarUrl3"
+      data-label="tr('Calendar 3')" data-type="textfield" data-default="''"
+      data-placeholder="tr('Optional')" />
+<meta name="x-icue-property" content="proxyBase"
+      data-label="tr('Proxy')" data-type="textfield" data-default="'http://localhost:8010'" />
+<meta name="x-icue-property" content="agendaDays"
+      data-label="tr('Days Shown')" data-type="slider"
+      data-min="1" data-max="5" data-step="1" data-unit-label="'d'" data-default="3" />
+<meta name="x-icue-property" content="refreshMinutes"
+      data-label="tr('Refresh')" data-type="slider"
+      data-min="1" data-max="60" data-step="1" data-unit-label="'min'" data-default="10" />
+
+<!-- Weather. Open-Meteo needs no key and allows cross-origin requests directly. -->
+<meta name="x-icue-property" content="weatherQuery"
+      data-label="tr('Location')" data-type="textfield" data-default="''"
+      data-placeholder="tr('ZIP code, city, or lat,lon')" />
+<meta name="x-icue-property" content="temperatureUnits"
+      data-label="tr('Temperature Units')" data-type="tab-buttons"
+      data-values="['°F','°C']" data-default="'°F'" />
+
+<!-- Clock -->
+<meta name="x-icue-property" content="timeZone"
+      data-label="tr('Time Zone')" data-type="combobox"
+      data-values="iCUE.allTimeZones()" data-default="iCUE.defaultTimeZone()" />
+<meta name="x-icue-property" content="timeFormat"
+      data-label="tr('Time Format')" data-type="tab-buttons"
+      data-values="[{'key':'12h','value':tr('12h')},{'key':'24h','value':tr('24h')}]"
+      data-default="iCUE.default24HourFormat()" />
+
+<!-- Appearance -->
+<meta name="x-icue-property" content="textColor"
+      data-label="tr('Text Color')" data-type="color" data-default="'#F1F3F4'" />
+<meta name="x-icue-property" content="accentColor"
+      data-label="tr('Accent Color')" data-type="color" data-default="'#8AB4F8'" />
+<meta name="x-icue-property" content="backgroundColor"
+      data-label="tr('Background')" data-type="color" data-default="'#0B0D10'" />
+
+<script type="application/json" id="x-icue-groups">
+[
+  {
+    "title": "tr('Calendar')",
+    "properties": ["calendarUrl1", "calendarUrl2", "calendarUrl3", "proxyBase", "agendaDays", "refreshMinutes"],
+    "info": "`Paste the &lt;b&gt;secret address in iCal format&lt;/b&gt; from Google Calendar → Settings → your calendar → Integrate calendar. Feeds are routed through the local proxy, which must be running.`"
+  },
+  {
+    "title": "tr('Weather')",
+    "properties": ["weatherQuery", "temperatureUnits"],
+    "info": "`&lt;b&gt;Location&lt;/b&gt; accepts a US ZIP code (02110), a city name (Boston), or coordinates (42.36,-71.06). The resolved city is shown on the widget, so you can check it picked the right one. Weather data by &lt;a href='https://open-meteo.com/' style='color: #8AB4F8;'&gt;Open-Meteo.com&lt;/a&gt;.`"
+  },
+  {
+    "title": "tr('Clock')",
+    "properties": ["timeZone", "timeFormat"]
+  },
+  {
+    "title": "tr('Appearance')",
+    "properties": ["textColor", "accentColor", "backgroundColor"]
+  }
+]
+</script>
+
+<link rel="stylesheet" href="styles/main.css" />
+</head>
+
+<body data-status="unconfigured">
+
+<!-- Weather glyphs, referenced by id from weather.js. Inline so nothing loads over the
+     network and both themes inherit currentColor. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="icon-clear-day" viewBox="0 0 32 32">
+      <circle cx="16" cy="16" r="6.2" />
+      <g stroke-linecap="round">
+        <path d="M16 2.6v3.4M16 26v3.4M2.6 16h3.4M26 16h3.4M6.6 6.6l2.4 2.4M23 23l2.4 2.4M25.4 6.6L23 9M9 23l-2.4 2.4" />
+      </g>
+    </symbol>
+    <symbol id="icon-clear-night" viewBox="0 0 32 32">
+      <path d="M21.5 21.6A9.4 9.4 0 0 1 12.6 8.2a9.6 9.6 0 1 0 11.7 12.2 9.5 9.5 0 0 1-2.8 1.2z" />
+    </symbol>
+    <symbol id="icon-partly-day" viewBox="0 0 32 32">
+      <circle cx="11.5" cy="11" r="4.4" />
+      <g stroke-linecap="round">
+        <path d="M11.5 3.6v2.2M4.1 11h2.2M6.2 5.7l1.6 1.6M16.8 5.7l-1.6 1.6" />
+      </g>
+      <path d="M12.4 26.4h11.2a4.3 4.3 0 0 0 .4-8.6 6.2 6.2 0 0 0-11.9 1.2 3.7 3.7 0 0 0 .3 7.4z" />
+    </symbol>
+    <symbol id="icon-partly-night" viewBox="0 0 32 32">
+      <path d="M18.6 12.4a6.6 6.6 0 0 1-5.4-8.9 6.8 6.8 0 1 0 8.1 8.6 6.7 6.7 0 0 1-2.7.3z" />
+      <path d="M10.4 27h11.2a4.3 4.3 0 0 0 .4-8.6 6.2 6.2 0 0 0-11.9 1.2 3.7 3.7 0 0 0 .3 7.4z" />
+    </symbol>
+    <symbol id="icon-cloudy" viewBox="0 0 32 32">
+      <path d="M9.6 25.4h13.6a5 5 0 0 0 .5-10 7.2 7.2 0 0 0-13.8 1.4 4.3 4.3 0 0 0-.3 8.6z" />
+    </symbol>
+    <symbol id="icon-fog" viewBox="0 0 32 32">
+      <path d="M9.6 19.4h13.6a5 5 0 0 0 .5-10 7.2 7.2 0 0 0-13.8 1.4 4.3 4.3 0 0 0-.3 8.6z" />
+      <g stroke-linecap="round"><path d="M6.4 24h19.2M9.6 28h12.8" /></g>
+    </symbol>
+    <symbol id="icon-drizzle" viewBox="0 0 32 32">
+      <path d="M9.6 19.4h13.6a5 5 0 0 0 .5-10 7.2 7.2 0 0 0-13.8 1.4 4.3 4.3 0 0 0-.3 8.6z" />
+      <g stroke-linecap="round"><path d="M12 23.4v2.4M16 24.6v2.6M20 23.4v2.4" /></g>
+    </symbol>
+    <symbol id="icon-rain" viewBox="0 0 32 32">
+      <path d="M9.6 18.4h13.6a5 5 0 0 0 .5-10 7.2 7.2 0 0 0-13.8 1.4 4.3 4.3 0 0 0-.3 8.6z" />
+      <g stroke-linecap="round"><path d="M11.4 22.2l-1.6 5M16.4 22.2l-1.6 5M21.4 22.2l-1.6 5" /></g>
+    </symbol>
+    <symbol id="icon-snow" viewBox="0 0 32 32">
+      <path d="M9.6 18.4h13.6a5 5 0 0 0 .5-10 7.2 7.2 0 0 0-13.8 1.4 4.3 4.3 0 0 0-.3 8.6z" />
+      <g stroke-linecap="round">
+        <path d="M11.6 23v4M9.8 24l3.6 2M13.4 24l-3.6 2" />
+        <path d="M20.4 23v4M18.6 24l3.6 2M22.2 24l-3.6 2" />
+      </g>
+    </symbol>
+    <symbol id="icon-thunderstorm" viewBox="0 0 32 32">
+      <path d="M9.6 18.4h13.6a5 5 0 0 0 .5-10 7.2 7.2 0 0 0-13.8 1.4 4.3 4.3 0 0 0-.3 8.6z" />
+      <path d="M17.6 21.4l-4.2 5.2h3.4l-1.4 4.2 4.6-5.8h-3.2z" />
+    </symbol>
+  </defs>
+</svg>
+
+<div id="panel">
+
+  <section id="rail">
+    <div id="clockBlock">
+      <div id="clockTime">
+        <span id="clockValue">--:--</span><span id="clockMeridiem"></span>
+      </div>
+      <!-- Two explicit lines rather than relying on wrapping, so the break always falls
+           between the weekday and the date instead of wherever the width happens to run out. -->
+      <div id="clockDate">
+        <span id="clockWeekday"></span>
+        <span id="clockMonthDay"></span>
+      </div>
+    </div>
+
+    <div id="weatherBlock" data-state="empty">
+      <div id="weatherMain">
+        <div id="weatherNow">
+          <svg id="weatherIcon" aria-hidden="true"><use href="#icon-cloudy" /></svg>
+          <div id="weatherPrimary">
+            <div id="weatherTemp">--°</div>
+            <div id="weatherCondition"></div>
+          </div>
+        </div>
+        <div id="weatherMeta">
+          <div id="weatherPlace"></div>
+          <div id="weatherDetail"></div>
+          <div id="weatherSun"></div>
+        </div>
+      </div>
+      <div id="forecastStrip"></div>
+    </div>
+  </section>
+
+  <section id="agenda">
+    <header id="agendaHeader">
+      <span id="agendaTitle" data-i18n="SCHEDULE">SCHEDULE</span>
+      <span id="agendaStatus" data-tone="muted"></span>
+      <button id="refreshButton" class="iconButton" type="button" aria-label="Refresh">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M20 12a8 8 0 1 1-2.34-5.66" />
+          <path d="M20 4v4h-4" />
+        </svg>
+      </button>
+    </header>
+    <div id="agendaColumns"></div>
+  </section>
+
+</div>
+
+<!-- Invite detail, shown when an agenda row is tapped. Lives outside #panel so the
+     once-a-minute agenda rebuild cannot tear it down mid-read. -->
+<div id="detail" hidden>
+  <div id="detailScrim"></div>
+  <section id="detailCard" role="dialog" aria-modal="true" aria-labelledby="detailTitle">
+    <header id="detailHead">
+      <div id="detailBar"></div>
+      <div id="detailHeadText">
+        <h1 id="detailTitle"></h1>
+        <div id="detailWhen"></div>
+      </div>
+      <button id="detailClose" class="iconButton" type="button" aria-label="Close">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M6 6l12 12M18 6L6 18" />
+        </svg>
+      </button>
+    </header>
+
+    <div id="detailBody">
+      <div id="detailLeft">
+        <div id="detailLinks"></div>
+        <p id="detailNoLinks" hidden></p>
+        <div id="detailFacts"></div>
+      </div>
+      <div id="detailRight">
+        <div class="detailLabel" data-i18n="DETAILS">DETAILS</div>
+        <div id="detailNotes"></div>
+      </div>
+    </div>
+
+    <div id="detailToast" aria-live="polite"></div>
+  </section>
+</div>
+
+<script src="js/icue-bridge.js"></script>
+<script src="js/feed-url.js"></script>
+<script src="js/links.js"></script>
+<script src="js/ics.js"></script>
+<script src="js/weather.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

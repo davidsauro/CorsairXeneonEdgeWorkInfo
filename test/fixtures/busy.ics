@@ -1,0 +1,193 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Google Inc//Google Calendar 70.9054//EN
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:Work
+X-WR-TIMEZONE:America/New_York
+BEGIN:VEVENT
+UID:meet-1@google.com
+DTSTART;TZID=America/New_York:20260901T083000
+DTEND;TZID=America/New_York:20260901T084500
+SUMMARY:Daily standup
+STATUS:CONFIRMED
+SEQUENCE:0
+LOCATION:
+X-GOOGLE-CONFERENCE:https://meet.google.com/hqz-mkrb-tfn
+URL:https://www.google.com/calendar/event?eid=bWVldC0x
+ORGANIZER;CN=Priya Raman:mailto:priya@example.com
+ATTENDEE;CN=Alex Rivera;PARTSTAT=ACCEPTED;RSVP=TRUE:mailto:dave@example.
+ com
+ATTENDEE;CN=Marcus Webb;PARTSTAT=ACCEPTED:mailto:marcus@example.com
+ATTENDEE;CN=Dana Liu;PARTSTAT=TENTATIVE:mailto:dana@example.com
+ATTENDEE;CUTYPE=RESOURCE;CN=Room 4B:mailto:room4b@example.com
+DESCRIPTION:Quick sync on yesterday's blockers.\n\nJoin with Google Meet:
+  https://meet.google.com/hqz-mkrb-tfn\nOr dial: (US) +1 617-555-0134 PIN
+ : 884 221 095#\nMore phone numbers: https://tel.meet/hqz-mkrb-tfn?pin=88
+ 42210950198
+END:VEVENT
+BEGIN:VEVENT
+UID:zoom-1@google.com
+DTSTART;TZID=America/New_York:20260901T100000
+DTEND;TZID=America/New_York:20260901T110000
+SUMMARY:Q4 roadmap review with product and design
+STATUS:CONFIRMED
+SEQUENCE:0
+LOCATION:https://us02web.zoom.us/j/85512349876?pwd=Qk1TZmxRdz09
+ORGANIZER;CN=Alex Rivera:mailto:alex@example.com
+ATTENDEE;CN=Priya Raman;PARTSTAT=ACCEPTED:mailto:priya@example.com
+ATTENDEE;CN=Sam Okafor;PARTSTAT=NEEDS-ACTION:mailto:sam@example.com
+ATTENDEE;CN=Dana Liu;PARTSTAT=ACCEPTED:mailto:dana@example.com
+ATTENDEE;CN=Marcus Webb;PARTSTAT=ACCEPTED:mailto:marcus@example.com
+ATTENDEE;CN=Jo Fielding;PARTSTAT=ACCEPTED:mailto:jo@example.com
+ATTENDEE;CN=Ravi Patel;PARTSTAT=ACCEPTED:mailto:ravi@example.com
+ATTENDEE;CN=Chen Wu;PARTSTAT=ACCEPTED:mailto:chen@example.com
+DESCRIPTION:Alex Rivera is inviting you to a scheduled Zoom meeting.<br>
+ <br><a href="https://us02web.zoom.us/j/85512349876?pwd=Qk1TZmxRdz09">J
+ oin Zoom Meeting</a><br>Meeting ID: 855 1234 9876<br>Passcode: 419773<br
+ ><br>Agenda doc: <a href="https://docs.example.com/q4-roadmap">Q4 road
+ map</a><br>Please read the <b>pre-read</b> before joining &mdash; it&#39
+ ;s short.
+END:VEVENT
+BEGIN:VEVENT
+UID:teams-1@google.com
+DTSTART;TZID=America/New_York:20260901T130000
+DTEND;TZID=America/New_York:20260901T140000
+SUMMARY:Customer escalation: Northwind account
+STATUS:CONFIRMED
+SEQUENCE:0
+LOCATION:Microsoft Teams Meeting
+X-MICROSOFT-SKYPETEAMSMEETINGURL:https://teams.microsoft.com/l/meetup-joi
+ n/19%3ameeting_ZmE1/0?context=%7b%22Tid%22%3a%22abc%22%7d
+ORGANIZER;CN=Sam Okafor:mailto:sam@example.com
+ATTENDEE;CN=Alex Rivera;PARTSTAT=ACCEPTED:mailto:alex@example.com
+DESCRIPTION:Northwind hit a rate limit again. Bring the incident timeline
+ .\n\nRunbook: https://wiki.example.com/northwind-escalation
+END:VEVENT
+BEGIN:VEVENT
+UID:room-1@google.com
+DTSTART;TZID=America/New_York:20260901T143000
+DTEND;TZID=America/New_York:20260901T153000
+SUMMARY:Board deck working session
+STATUS:CONFIRMED
+SEQUENCE:0
+LOCATION:Room 2, 4th floor
+ORGANIZER;CN=Alex Rivera:mailto:alex@example.com
+DESCRIPTION:Whiteboard session. No dial-in.
+END:VEVENT
+BEGIN:VEVENT
+UID:focus-1@google.com
+DTSTART;TZID=America/New_York:20260901T160000
+DTEND;TZID=America/New_York:20260901T170000
+SUMMARY:Deep work block
+STATUS:CONFIRMED
+SEQUENCE:0
+DESCRIPTION:Do not book over this.
+END:VEVENT
+BEGIN:VEVENT
+UID:metrics-1@google.com
+DTSTART;TZID=America/New_York:20260901T170000
+DTEND;TZID=America/New_York:20260901T174500
+SUMMARY:Weekly metrics review
+STATUS:CONFIRMED
+SEQUENCE:0
+LOCATION:https://meet.google.com/xyz-abcd-efg
+X-GOOGLE-CONFERENCE:https://meet.google.com/xyz-abcd-efg
+END:VEVENT
+BEGIN:VEVENT
+UID:standup-2@google.com
+DTSTART;TZID=America/New_York:20260902T090000
+DTEND;TZID=America/New_York:20260902T093000
+SUMMARY:Daily standup
+STATUS:CONFIRMED
+SEQUENCE:0
+X-GOOGLE-CONFERENCE:https://meet.google.com/hqz-mkrb-tfn
+END:VEVENT
+BEGIN:VEVENT
+UID:sprint-2@google.com
+DTSTART;TZID=America/New_York:20260902T093000
+DTEND;TZID=America/New_York:20260902T103000
+SUMMARY:Sprint planning
+STATUS:CONFIRMED
+SEQUENCE:0
+LOCATION:Room 4B
+END:VEVENT
+BEGIN:VEVENT
+UID:partner-2@google.com
+DTSTART;TZID=America/New_York:20260902T110000
+DTEND;TZID=America/New_York:20260902T120000
+SUMMARY:Partner intro call
+STATUS:CONFIRMED
+SEQUENCE:0
+LOCATION:https://acme.webex.com/meet/dave
+DESCRIPTION:Intro to the Acme integrations team.\nDeck: https://docs.exam
+ ple.com/acme-intro
+END:VEVENT
+BEGIN:VEVENT
+UID:offsite-2@google.com
+DTSTART;TZID=America/New_York:20260902T130000
+DTEND;TZID=America/New_York:20260902T150000
+SUMMARY:Offsite prep workshop
+STATUS:CONFIRMED
+SEQUENCE:0
+LOCATION:Room 1
+END:VEVENT
+BEGIN:VEVENT
+UID:release-2@google.com
+DTSTART;TZID=America/New_York:20260902T170000
+DTEND;TZID=America/New_York:20260902T173000
+SUMMARY:Release go/no-go
+STATUS:CONFIRMED
+SEQUENCE:0
+X-GOOGLE-CONFERENCE:https://meet.google.com/rel-eeee-ase
+END:VEVENT
+BEGIN:VEVENT
+UID:standup-3@google.com
+DTSTART;TZID=America/New_York:20260903T083000
+DTEND;TZID=America/New_York:20260903T084500
+SUMMARY:Daily standup
+STATUS:CONFIRMED
+SEQUENCE:0
+X-GOOGLE-CONFERENCE:https://meet.google.com/hqz-mkrb-tfn
+END:VEVENT
+BEGIN:VEVENT
+UID:allhands-3@google.com
+DTSTART;TZID=America/New_York:20260903T100000
+DTEND;TZID=America/New_York:20260903T113000
+SUMMARY:All-hands
+STATUS:CONFIRMED
+SEQUENCE:0
+LOCATION:Auditorium
+DESCRIPTION:Streamed for remote folks: https://us02web.zoom.us/j/99988877
+ 766
+END:VEVENT
+BEGIN:VEVENT
+UID:dana-3@google.com
+DTSTART;TZID=America/New_York:20260903T140000
+DTEND;TZID=America/New_York:20260903T143000
+SUMMARY:1:1 with Dana
+STATUS:CONFIRMED
+SEQUENCE:0
+X-GOOGLE-CONFERENCE:https://meet.google.com/dan-aaaa-111
+END:VEVENT
+BEGIN:VEVENT
+UID:lunch@google.com
+DTSTART;TZID=America/New_York:20250728T120000
+DTEND;TZID=America/New_York:20250728T123000
+SUMMARY:Lunch
+RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR
+END:VEVENT
+BEGIN:VEVENT
+UID:kickoff@google.com
+DTSTART;VALUE=DATE:20260901
+DTEND;VALUE=DATE:20260903
+SUMMARY:Sales kickoff week
+DESCRIPTION:Schedule and rooms: https://wiki.example.com/skoff
+END:VEVENT
+BEGIN:VEVENT
+UID:pto@google.com
+DTSTART;VALUE=DATE:20260902
+DTEND;VALUE=DATE:20260903
+SUMMARY:Marcus PTO
+END:VEVENT
+END:VCALENDAR

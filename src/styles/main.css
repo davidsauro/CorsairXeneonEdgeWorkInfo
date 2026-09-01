@@ -1,0 +1,903 @@
+/*
+ * Business Info Center — laid out for the XENEON EDGE 2536x696 slot.
+ *
+ * Every size is in vh/vw so the design survives being dropped into a different slot, but
+ * the proportions are tuned for the extra-wide one: left third is the clock/weather rail,
+ * right two thirds are agenda day columns.
+ *
+ * Nothing scrolls. Columns clip, and app.js trims rows to fit and shows a "+N more"
+ * marker instead.
+ */
+
+/*
+ * Open Sans, bundled rather than loaded from iCUE's own "qrc:/fonts/..." resources.
+ *
+ * Corsair's built-in widgets reference qrc: paths, but that is Qt's internal resource
+ * scheme: it does not exist in a plain browser (so preview shows a font load error), and
+ * whether a sideloaded widget on file:// is allowed to read it is undocumented. Shipping
+ * the file makes the widget render identically in the browser and on the device.
+ *
+ * This is one variable font. All three faces point at the same file and pin the weight
+ * axis to a single value, so "font-family: OpenSansBold" renders at 700 regardless of the
+ * element's own font-weight — which keeps the rest of this stylesheet unchanged.
+ */
+@font-face {
+  font-family: OpenSansRegular;
+  src: url("../resources/fonts/OpenSans-Variable-latin.woff2") format("woff2-variations");
+  font-weight: 400;
+  font-display: block;
+}
+@font-face {
+  font-family: OpenSansSemiBold;
+  src: url("../resources/fonts/OpenSans-Variable-latin.woff2") format("woff2-variations");
+  font-weight: 600;
+  font-display: block;
+}
+@font-face {
+  font-family: OpenSansBold;
+  src: url("../resources/fonts/OpenSans-Variable-latin.woff2") format("woff2-variations");
+  font-weight: 700;
+  font-display: block;
+}
+
+:root {
+  --bg: #0b0d10;
+  --text: #f1f3f4;
+  --accent: #8ab4f8;
+
+  --now: #ea4335;
+  --muted: color-mix(in srgb, var(--text) 52%, transparent);
+  --faint: color-mix(in srgb, var(--text) 34%, transparent);
+  --line: color-mix(in srgb, var(--text) 11%, transparent);
+  --surface: color-mix(in srgb, var(--text) 4%, transparent);
+  --surface-strong: color-mix(in srgb, var(--text) 7%, transparent);
+
+  /*
+   * Open Sans has a font box of 1.360em (ascent 1.070, descent 0.290) with real ink
+   * descenders around 0.235em. Any element that combines `overflow: hidden` (needed for
+   * text-overflow: ellipsis) with a line-height below ~1.30 clips the tails off g, y, p.
+   * 1.4 is the house minimum for such text; it leaves about a pixel of slack at these
+   * sizes. Uppercase-only labels are exempt.
+   */
+  --lh-text: 1.4;
+
+  --event-row-h: 6.8vh;
+  --time-col: 11.2vh;
+  --pad: 2.6vh;
+
+  --sans: OpenSansRegular, "Segoe UI", Arial, sans-serif;
+  --sans-semi: OpenSansSemiBold, "Segoe UI Semibold", "Segoe UI", Arial, sans-serif;
+  --sans-bold: OpenSansBold, "Segoe UI", Arial, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+button { font: inherit; color: inherit; background: none; border: none; padding: 0; }
+
+/* Touch affordance. Deliberately no min-height: agenda rows set their own fixed height
+   and a 48px floor here would fight the row-fitting maths. Rows are 6.8vh (~47px) and
+   span the full column width, so the tap area is comfortably large either way. */
+.interactive {
+  touch-action: manipulation;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+}
+.interactive:active { transform: scale(0.995); }
+
+#panel {
+  height: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  gap: var(--pad);
+  padding: var(--pad);
+}
+
+/* ==================================================================== rail */
+
+#rail {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3vh;
+}
+
+/* The clock and the date sit side by side: at 2536x696 a stacked date left most of the
+   rail's width empty. Same for the weather — the readings move beside the temperature. */
+#clockBlock {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 2.4vh;
+  min-width: 0;
+}
+
+#clockTime {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: baseline;
+  gap: 1.2vh;
+  font-family: var(--sans-bold);
+  line-height: 0.92;
+}
+
+#clockValue {
+  font-size: 23vh;
+  letter-spacing: -0.045em;
+  font-variant-numeric: tabular-nums;
+}
+
+#clockMeridiem {
+  font-size: 6vh;
+  font-family: var(--sans-semi);
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+#clockMeridiem:empty { display: none; }
+
+#clockDate {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: center;
+  font-family: var(--sans-semi);
+  font-size: 7.2vh;
+  line-height: var(--lh-text);
+  letter-spacing: -0.02em;
+}
+
+#clockWeekday,
+#clockMonthDay {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#clockWeekday { color: var(--muted); }
+
+/* -------------------------------------------------------------- weather */
+
+#weatherBlock {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin-top: 3vh;
+  padding-top: 3.4vh;
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 3vh;
+}
+
+#weatherMain {
+  display: flex;
+  align-items: center;
+  gap: 2.6vh;
+  min-width: 0;
+}
+
+#weatherNow {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 2.2vh;
+  min-width: 0;
+}
+
+#weatherIcon {
+  flex: 0 0 auto;
+  width: 17vh;
+  height: 17vh;
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.7;
+  stroke-linejoin: round;
+}
+
+#weatherPrimary { min-width: 0; }
+
+#weatherTemp {
+  font-family: var(--sans-bold);
+  font-size: 15vh;
+  line-height: 0.94;
+  letter-spacing: -0.045em;
+  font-variant-numeric: tabular-nums;
+}
+#weatherTemp:empty { display: none; }
+
+#weatherCondition {
+  margin-top: 0.6vh;
+  font-family: var(--sans-semi);
+  font-size: 4vh;
+  line-height: var(--lh-text);
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The three readings, stacked to the right of the temperature. */
+#weatherMeta {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.1vh;
+}
+
+#weatherPlace,
+#weatherDetail,
+#weatherSun {
+  font-size: 3.5vh;
+  line-height: var(--lh-text);
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#weatherDetail,
+#weatherSun {
+  font-variant-numeric: tabular-nums;
+  color: var(--faint);
+}
+#weatherSun:empty { display: none; }
+
+#weatherBlock[data-state="empty"] #weatherIcon,
+#weatherBlock[data-state="error"] #weatherIcon { stroke: var(--faint); }
+#weatherBlock[data-state="error"] #weatherPlace { color: var(--now); }
+
+#forecastStrip {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: 40vh;  /* caps how much of the rail's slack the cards absorb */
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 1.4vh;
+}
+#forecastStrip:empty { display: none; }
+
+.forecastDay {
+  min-width: 0;
+  padding: 2.2vh 1.2vh;
+  border-radius: 1.5vh;
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-evenly;
+  gap: 1.2vh;
+  overflow: hidden;
+}
+
+.forecastName {
+  font-family: var(--sans-semi);
+  font-size: 2.8vh;
+  letter-spacing: 0.11em;
+  color: var(--muted);
+}
+
+.forecastIcon {
+  flex: 0 1 auto;
+  width: 11vh;
+  height: 11vh;
+  min-height: 4vh;
+  fill: none;
+  stroke: var(--text);
+  stroke-width: 1.7;
+  stroke-linejoin: round;
+  opacity: 0.85;
+}
+
+.forecastTemps {
+  font-family: var(--sans-semi);
+  font-size: 3.6vh;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.forecastCondition {
+  max-width: 100%;
+  font-size: 2.6vh;
+  line-height: var(--lh-text);
+  color: var(--faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ================================================================== agenda */
+
+#agenda {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.4vh;
+  padding-left: var(--pad);
+  border-left: 1px solid var(--line);
+}
+
+#agendaHeader {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 2vh;
+  height: 6.4vh;
+}
+
+#agendaTitle {
+  font-family: var(--sans-bold);
+  font-size: 2.6vh;
+  letter-spacing: 0.17em;
+  color: var(--accent);
+}
+
+#agendaStatus {
+  font-family: var(--sans-semi);
+  font-size: 2.3vh;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-right: auto;
+}
+#agendaStatus[data-tone="fresh"] { color: var(--faint); }
+#agendaStatus[data-tone="warn"] { color: #fbbc04; }
+#agendaStatus[data-tone="bad"] { color: var(--now); }
+
+.iconButton {
+  flex: 0 0 auto;
+  width: max(48px, 6.2vh);
+  height: max(48px, 6.2vh);
+  border: 1px solid var(--line);
+  border-radius: 1.4vh;
+  background: var(--surface);
+  display: grid;
+  place-items: center;
+  touch-action: manipulation;
+  cursor: pointer;
+}
+.iconButton:active { transform: scale(0.96); }
+.iconButton svg {
+  width: 46%;
+  height: 46%;
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+#agendaColumns {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(var(--columns, 3), minmax(0, 1fr));
+  gap: 1.6vh;
+}
+
+/* ------------------------------------------------------------ day column */
+
+.dayColumn {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  border-radius: 1.6vh;
+  background: var(--surface);
+  overflow: hidden;
+}
+.dayColumn[data-today="true"] {
+  background: var(--surface-strong);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 26%, transparent);
+}
+
+.dayHeader {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: baseline;
+  gap: 1.1vh;
+  padding: 1.5vh 1.8vh 1.2vh;
+  border-bottom: 1px solid var(--line);
+}
+
+.dayName {
+  font-family: var(--sans-semi);
+  font-size: 2.5vh;
+  letter-spacing: 0.13em;
+  color: var(--muted);
+}
+
+.dayNumber {
+  font-family: var(--sans-bold);
+  font-size: 3.6vh;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.dayBadge {
+  margin-left: auto;
+  font-family: var(--sans-bold);
+  font-size: 1.95vh;
+  letter-spacing: 0.14em;
+  color: var(--now);
+}
+
+.dayBody {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  padding: 1vh 1.8vh 1.2vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ------------------------------------------------------------ all-day row */
+
+.allDayChip {
+  flex: 0 0 auto;
+  margin-bottom: 0.7vh;
+  padding: 0.7vh 1.1vh;
+  border-radius: 0.8vh;
+  border-left: 0.45vh solid var(--bar, var(--accent));
+  background: color-mix(in srgb, var(--bar, var(--accent)) 20%, transparent);
+  font-family: var(--sans-semi);
+  font-size: 2.35vh;
+  line-height: var(--lh-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.allDayChip[data-overflow="true"] {
+  border-left-color: var(--faint);
+  background: none;
+  color: var(--muted);
+}
+
+/* ---------------------------------------------------------------- events */
+
+.event {
+  flex: 0 0 auto;
+  height: var(--event-row-h);
+  display: grid;
+  font: inherit;
+  grid-template-columns: var(--time-col) 0.42vh minmax(0, 1fr);
+  align-items: center;
+  gap: 1.1vh;
+}
+.event[data-past="true"] { opacity: 0.4; }
+
+.eventTime {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.eventStart {
+  font-family: var(--sans-semi);
+  font-size: 2.3vh;
+  line-height: 1.15;
+  color: var(--muted);
+}
+
+.eventEnd {
+  font-size: 2.05vh;
+  line-height: 1.15;
+  color: var(--faint);
+}
+
+.eventBar {
+  height: 68%;
+  border-radius: 0.3vh;
+  background: var(--bar, var(--accent));
+}
+
+.eventBody { min-width: 0; }
+
+.eventTitle {
+  font-family: var(--sans-semi);
+  font-size: 2.55vh;
+  line-height: var(--lh-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.eventWhere {
+  font-size: 2.1vh;
+  line-height: var(--lh-text);
+  color: var(--faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* -------------------------------------------------------------- now line */
+
+.nowLine {
+  flex: 0 0 auto;
+  height: 3.4vh;
+  display: grid;
+  grid-template-columns: var(--time-col) minmax(0, 1fr);
+  align-items: center;
+  gap: 1.1vh;
+}
+
+.nowTime {
+  font-family: var(--sans-bold);
+  font-size: 2.3vh;
+  color: var(--now);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.nowRule {
+  position: relative;
+  height: 0.28vh;
+  min-height: 2px;
+  background: var(--now);
+  border-radius: 2px;
+}
+.nowRule::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 1.35vh;
+  height: 1.35vh;
+  min-width: 9px;
+  min-height: 9px;
+  transform: translate(-45%, -50%);
+  border-radius: 50%;
+  background: var(--now);
+}
+
+/* ------------------------------------------------------- empty / overflow */
+
+.dayEmpty {
+  flex: 0 0 auto;
+  padding-top: 1.4vh;
+  font-size: 2.35vh;
+  color: var(--faint);
+}
+
+.moreRow {
+  flex: 0 0 auto;
+  height: 3.4vh;
+  display: flex;
+  align-items: center;
+  padding-left: calc(var(--time-col) + 1.5vh);
+  font-family: var(--sans-semi);
+  font-size: 2.15vh;
+  letter-spacing: 0.05em;
+  color: var(--faint);
+}
+
+/* ============================================ narrower slots, best effort */
+
+/*
+ * The rail's side-by-side arrangement (date beside the clock, readings beside the
+ * temperature) needs the ~830px the extra-wide slot gives it. In a narrower slot there is
+ * not enough room, so stack everything back up and drop the least important rows.
+ * dashboard_lcd covers several slot sizes, so this has to stay usable rather than pretty.
+ */
+@media (max-aspect-ratio: 2/1) {
+  :root { --event-row-h: 8vh; --time-col: 10vh; }
+
+  #panel { grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr); }
+
+  #clockBlock {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.4vh;
+  }
+  #clockValue { font-size: 15vh; }
+  #clockMeridiem { font-size: 4.4vh; }
+  #clockDate {
+    flex: 0 0 auto;
+    text-align: left;
+    font-size: 4.4vh;
+  }
+
+  #weatherBlock { gap: 1.6vh; }
+  #weatherMain {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1.4vh;
+  }
+  #weatherNow { gap: 1.6vh; }
+  #weatherIcon { width: 9vh; height: 9vh; }
+  #weatherTemp { font-size: 8.5vh; }
+  #weatherCondition { font-size: 3vh; }
+  #weatherMeta { gap: 0.5vh; }
+  #weatherPlace,
+  #weatherDetail,
+  #weatherSun { font-size: 2.6vh; }
+
+  /* No room for these once the rail is a third of 840px. */
+  #weatherSun { display: none; }
+  #forecastStrip { display: none; }
+}
+
+/* ============================================================ invite detail */
+
+#detail {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3vh;
+}
+#detail[hidden] { display: none; }
+
+#detailScrim {
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, #000 74%, transparent);
+}
+
+#detailCard {
+  position: relative;
+  width: min(1720px, 88%);
+  max-height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2.4vh;
+  padding: 3vh 3.2vh;
+  border-radius: 2.2vh;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--text) 8%, var(--bg));
+  box-shadow: 0 2vh 6vh color-mix(in srgb, #000 55%, transparent);
+}
+
+/* ----------------------------------------------------------------- header */
+
+#detailHead {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 2.2vh;
+  align-items: center;
+}
+
+#detailBar {
+  width: 0.7vh;
+  min-width: 5px;
+  align-self: stretch;
+  min-height: 7vh;
+  border-radius: 0.4vh;
+  background: var(--accent);
+}
+
+#detailHeadText { min-width: 0; }
+
+#detailTitle {
+  margin: 0;
+  font-family: var(--sans-bold);
+  font-size: 5vh;
+  line-height: var(--lh-text);
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+  /* Two lines at most; a very long title should not push the body off screen. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+#detailWhen {
+  margin-top: 0.6vh;
+  font-family: var(--sans-semi);
+  font-size: 3.1vh;
+  line-height: var(--lh-text);
+  color: var(--accent);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ------------------------------------------------------------------- body */
+
+#detailBody {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  gap: 3.2vh;
+}
+
+#detailLeft,
+#detailRight {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.8vh;
+}
+
+/* Six links plus organizer and guests can outgrow the card on a 696px panel. */
+#detailLeft { overflow-y: auto; padding-right: 1vh; }
+
+.detailLabel {
+  font-family: var(--sans-semi);
+  font-size: 2.2vh;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+/* ------------------------------------------------------------------ links */
+
+#detailLinks {
+  display: flex;
+  flex-direction: column;
+  gap: 1.4vh;
+}
+
+.linkRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 1.4vh;
+  align-items: center;
+  padding: 1.6vh 1.8vh;
+  border-radius: 1.4vh;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+.linkRow[data-kind="join"] {
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.linkText { min-width: 0; }
+
+.linkLabel {
+  font-family: var(--sans-semi);
+  font-size: 3vh;
+  line-height: var(--lh-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The full URL, shown so it can be read off the panel and typed by hand. */
+.linkUrl {
+  font-size: 2.2vh;
+  line-height: var(--lh-text);
+  color: var(--faint);
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.linkButton {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 13vh;
+  min-height: 48px;
+  padding: 0 2vh;
+  border-radius: 1.2vh;
+  border: 1px solid transparent;
+  background: var(--accent);
+  color: #08131f;
+  font-family: var(--sans-bold);
+  font-size: 2.5vh;
+  letter-spacing: 0.1em;
+  text-align: center;
+  touch-action: manipulation;
+  cursor: pointer;
+}
+.linkButton[data-variant="quiet"] {
+  background: none;
+  border-color: var(--line);
+  color: var(--text);
+}
+.linkButton:active { transform: scale(0.97); }
+
+#detailNoLinks {
+  margin: 0;
+  font-size: 2.6vh;
+  color: var(--faint);
+}
+#detailNoLinks[hidden] { display: none; }
+
+/* ------------------------------------------------------------------ facts */
+
+#detailFacts {
+  display: flex;
+  flex-direction: column;
+  gap: 1.4vh;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.factRow {
+  display: grid;
+  grid-template-columns: 15vh minmax(0, 1fr);
+  gap: 1.6vh;
+  align-items: baseline;
+}
+
+.factValue {
+  font-size: 2.7vh;
+  line-height: var(--lh-text);
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ------------------------------------------------------------------ notes */
+
+#detailNotes {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 1vh;
+  font-size: 2.5vh;
+  line-height: 1.5;
+  color: var(--muted);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
+  -webkit-user-select: text;
+}
+#detailNotes[data-empty="true"] { color: var(--faint); }
+#detailNotes::-webkit-scrollbar { width: 0.8vh; }
+#detailNotes::-webkit-scrollbar-thumb {
+  border-radius: 1vh;
+  background: color-mix(in srgb, var(--text) 20%, transparent);
+}
+
+/* ------------------------------------------------------------------ toast */
+
+#detailToast {
+  flex: 0 0 auto;
+  min-height: 3.4vh;
+  font-family: var(--sans-semi);
+  font-size: 2.5vh;
+  line-height: var(--lh-text);
+  color: var(--accent);
+  opacity: 0;
+  transition: opacity 140ms ease-out;
+}
+#detailToast[data-shown="true"] { opacity: 1; }
+
+/* Narrow slots: one column, and the notes get whatever height is left. */
+@media (max-aspect-ratio: 2/1) {
+  #detailCard {
+    width: 100%;
+    padding: 2.4vh;
+    gap: 1.8vh;
+  }
+  #detailBody { grid-template-columns: minmax(0, 1fr); gap: 1.8vh; }
+  #detailTitle { font-size: 3.6vh; }
+  #detailWhen { font-size: 2.4vh; white-space: normal; }
+  .linkLabel { font-size: 2.4vh; }
+  .linkRow { grid-template-columns: minmax(0, 1fr) auto; }
+  .linkButton { min-width: 11vh; font-size: 2.1vh; }
+  #detailRight { display: none; }
+}
