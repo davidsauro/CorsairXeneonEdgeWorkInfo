@@ -43,13 +43,22 @@
       data-values="[{'key':'12h','value':tr('12h')},{'key':'24h','value':tr('24h')}]"
       data-default="iCUE.default24HourFormat()" />
 
-<!-- Appearance -->
+<!-- Personalization. These five names are the ones iCUE's page-level "Pages
+     personalization" panel drives (WidgetPersonalizationPanelModel: textColor,
+     accentColor, accentColor2, backgroundColor, transparency). A widget that does not
+     declare a name cannot receive that control's value, which is why the whole set is
+     here rather than just the ones this design uses heavily. -->
 <meta name="x-icue-property" content="textColor"
       data-label="tr('Text Color')" data-type="color" data-default="'#F1F3F4'" />
 <meta name="x-icue-property" content="accentColor"
       data-label="tr('Accent Color')" data-type="color" data-default="'#8AB4F8'" />
+<meta name="x-icue-property" content="accentColor2"
+      data-label="tr('Secondary Accent')" data-type="color" data-default="'#EA4335'" />
 <meta name="x-icue-property" content="backgroundColor"
       data-label="tr('Background')" data-type="color" data-default="'#0B0D10'" />
+<meta name="x-icue-property" content="transparency"
+      data-label="tr('Widget Transparency')" data-type="slider"
+      data-min="0" data-max="100" data-step="1" data-unit-label="'%'" data-default="100" />
 
 <script type="application/json" id="x-icue-groups">
 [
@@ -68,8 +77,9 @@
     "properties": ["timeZone", "timeFormat"]
   },
   {
-    "title": "tr('Appearance')",
-    "properties": ["textColor", "accentColor", "backgroundColor"]
+    "title": "tr('Widget Personalization')",
+    "properties": ["textColor", "accentColor", "accentColor2", "backgroundColor", "transparency"],
+    "info": "tr('These follow the device Pages personalization settings unless you override them here.')"
   }
 ]
 </script>
@@ -131,6 +141,8 @@
     </symbol>
   </defs>
 </svg>
+
+<div id="backdrop"></div>
 
 <div id="panel">
 
@@ -216,6 +228,7 @@
   </section>
 </div>
 
+<script src="js/color.js"></script>
 <script src="js/icue-bridge.js"></script>
 <script src="js/feed-url.js"></script>
 <script src="js/links.js"></script>

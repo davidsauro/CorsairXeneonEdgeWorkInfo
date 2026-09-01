@@ -45,7 +45,12 @@
   --text: #f1f3f4;
   --accent: #8ab4f8;
 
-  --now: #ea4335;
+  --accent2: #ea4335;
+  --widget-opacity: 1;
+
+  /* The now-line follows the secondary accent, which is the colour iCUE's personalization
+     panel offers as "accentColor2". */
+  --now: var(--accent2);
   --muted: color-mix(in srgb, var(--text) 52%, transparent);
   --faint: color-mix(in srgb, var(--text) 34%, transparent);
   --line: color-mix(in srgb, var(--text) 11%, transparent);
@@ -80,7 +85,7 @@ html, body {
 }
 
 body {
-  background: var(--bg);
+  background: transparent;
   color: var(--text);
   font-family: var(--sans);
   user-select: none;
@@ -99,6 +104,18 @@ button { font: inherit; color: inherit; background: none; border: none; padding:
   width: 100%;
 }
 .interactive:active { transform: scale(0.995); }
+
+/* The widget's own background. Separate from body so --widget-opacity can fade it and
+   let the device wallpaper through while text and icons stay fully opaque. */
+#backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  opacity: var(--widget-opacity);
+  background:
+    radial-gradient(circle at 15% 0%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 42%),
+    var(--bg);
+}
 
 #panel {
   height: 100%;

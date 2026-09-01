@@ -101,11 +101,27 @@
 
   /* ------------------------------------------------------------- appearance */
 
+  /**
+   * Colours arrive in whatever form Qt serialised QColor to, which is not always CSS:
+   * "rgb(0.94 0.56 0.2)" reads as near-black and "hsv(...)" is not a CSS function at all.
+   * Everything goes through Color.toCss() before it reaches a custom property.
+   */
+  function applyColor(name, propertyName, fallback) {
+    var css = Color.toCss(ICUE.string(propertyName, ""));
+    document.documentElement.style.setProperty(name, css || fallback);
+  }
+
   function applyAppearance() {
-    var root = document.documentElement.style;
-    root.setProperty("--text", ICUE.string("textColor", "#F1F3F4"));
-    root.setProperty("--accent", ICUE.string("accentColor", "#8AB4F8"));
-    root.setProperty("--bg", ICUE.string("backgroundColor", "#0B0D10"));
+    applyColor("--text", "textColor", "#F1F3F4");
+    applyColor("--accent", "accentColor", "#8AB4F8");
+    applyColor("--accent2", "accentColor2", "#EA4335");
+    applyColor("--bg", "backgroundColor", "#0B0D10");
+
+    // iCUE's "transparency" is really an opacity percentage: its own widgets do
+    // opacity = value / 100, and ship a default of 80.
+    var value = ICUE.number("transparency", 100);
+    var opacity = Number.isFinite(value) ? Math.max(0, Math.min(100, value)) / 100 : 1;
+    document.documentElement.style.setProperty("--widget-opacity", String(opacity));
   }
 
   /* ------------------------------------------------------------------- clock */

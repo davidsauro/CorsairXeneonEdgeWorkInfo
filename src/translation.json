@@ -19,7 +19,6 @@
       "Time Format": "Time Format",
       "12h": "12h",
       "24h": "24h",
-      "Appearance": "Appearance",
       "Text Color": "Text Color",
       "Accent Color": "Accent Color",
       "Background": "Background",
@@ -74,7 +73,11 @@
       "Could not open — copy the link instead": "Could not open — copy the link instead",
       "Link copied to the clipboard": "Link copied to the clipboard",
       "Could not copy — type the link shown": "Could not copy — type the link shown",
-      "Calendar event": "Calendar event"
+      "Calendar event": "Calendar event",
+      "Widget Personalization": "Widget Personalization",
+      "Secondary Accent": "Secondary Accent",
+      "Widget Transparency": "Widget Transparency",
+      "These follow the device Pages personalization settings unless you override them here.": "These follow the device Pages personalization settings unless you override them here."
     }
   }
 }

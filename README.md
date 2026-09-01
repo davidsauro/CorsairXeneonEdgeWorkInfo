@@ -58,6 +58,7 @@ src/                     everything that gets installed into iCUE
   js/icue-bridge.js      wrapper over the iCUE host API (reusable in any widget)
   js/feed-url.js         rewrites Google ICS addresses onto the local proxy
   js/links.js            pulls joinable meeting links out of an invite
+  js/color.js            normalises iCUE's Qt colour strings into CSS
   js/ics.js              RFC 5545 reader: recurrence, timezones, overrides
   js/weather.js          Open-Meteo client
   js/app.js              layout and rendering
@@ -159,7 +160,7 @@ See [docs/icue-widget-api.md](docs/icue-widget-api.md).
 | Location | A **US ZIP code** (`02110`), a city name (`Boston`), or coordinates (`42.36,-71.06`). The resolved city is displayed on the widget so you can confirm it guessed right. |
 | Temperature Units | °F / °C |
 | Time Zone / Time Format | Clock and all event times. |
-| Text / Accent / Background | Colours. |
+| Text / Accent / Secondary Accent / Background / Transparency | Under **Widget Personalization**. These are the same five names iCUE's device-level *Pages personalization* panel drives, so they follow that panel unless you override them here. |
 
 You paste the ordinary Google address; the widget rewrites `calendar.google.com/calendar/…`
 to `<proxy>/proxy/calendar/…` itself. A non-Google feed that already sends CORS headers is
@@ -193,6 +194,29 @@ explicit failure. Nothing fails silently.
 
 Close with the ✕, by tapping outside the panel, or with Escape. The panel sits outside the
 agenda's DOM, so the once-a-minute refresh cannot pull it out from under you mid-read.
+
+## Page personalization
+
+The widget honours iCUE's device-level **Pages personalization** panel — widget text
+colour, accent colour, background colour and transparency — because those settings reach a
+widget by overriding properties with specific well-known names. It declares all five
+(`textColor`, `accentColor`, `accentColor2`, `backgroundColor`, `transparency`), so each
+control in that panel applies. Setting any of them in the widget's own settings overrides
+the page value.
+
+Two things make this easy to get wrong, both documented in
+[docs/icue-widget-api.md](docs/icue-widget-api.md):
+
+- **A property you don't declare cannot be driven.** There is no opt-in flag; the control
+  just silently does nothing.
+- **The colours are not CSS.** iCUE hands over Qt's serialisation — `rgb(1 1 1)` for white
+  and sometimes `hsv(…)`. Assigned directly, the first renders near-black (CSS reads
+  unitless `rgb()` as 0-255) and the second is dropped, because CSS has no `hsv()`.
+  [`src/js/color.js`](src/js/color.js) normalises both.
+
+Transparency fades the widget's own background layer only, so text stays legible while the
+device background shows through. Despite the name it is an opacity percentage, matching
+Corsair's own widgets.
 
 ## Behaviour worth knowing
 
@@ -239,6 +263,11 @@ see when this happens — put coordinates in the Location field instead, e.g. `4
 
 **A change to the widget does nothing.** iCUE caches aggressively. Quit it from the tray
 icon — not just closing the window — then relaunch.
+
+**A Pages personalization setting does nothing.** Check the property is declared in
+`index.html` — an undeclared name is simply never delivered. If a colour applies but comes
+out black, it arrived as Qt's normalised `rgb(0..1)` form and is not going through
+`Color.toCss()`.
 
 **JOIN does nothing.** The `linkprovider` plugin only exists inside iCUE, so in browser
 preview the panel reports "Could not open — copy the link instead". On the device, if it

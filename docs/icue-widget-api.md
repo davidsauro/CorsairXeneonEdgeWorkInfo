@@ -191,6 +191,11 @@ AnalogClock widgets appear as one "Clock Face" item with style variants).
 | `iCUE.allTimeZones()` | Time-zone list, for `data-values` in the settings panel. |
 | `iCUE.defaultTimeZone()` | IANA zone, sometimes suffixed `" (UTC+x)"` — split on space. |
 | `iCUE.default24HourFormat()` | `"12h"` or `"24h"` from OS locale. |
+| `iCUE.defaultTemperatureUnit()` | OS locale default. Return format unverified — no shipped widget uses it. |
+| `iCUE.defaultSpeedUnit()` | As above. |
+| `iCUE.formatUserLocaleDate()` / `formatUserLocaleTime()` | Host-side locale formatting. |
+| `iCUE.isPreview` | `true` in the settings-panel preview, `false` on the device. Useful for skipping network calls while the user is editing. |
+| `iCUE.fpsLimit` | Frame cap the host wants the widget to respect. |
 | `uniqueId` | Stable id for this *placed instance*. Namespace `localStorage` with it. |
 | `tr(key)` | Returns a **Promise\<string\>** resolved against `translation.json`. |
 | `window.plugins.<Name>` | Qt WebChannel objects from `required_plugins`. |
@@ -319,6 +324,67 @@ Windows at all. Bind the IPv6 wildcard, as node's default `listen(port)` does.
 
 Surface failures on screen. A widget that silently shows stale numbers is worse than one
 that says `OFFLINE`.
+
+## Page personalization
+
+The XENEON EDGE dashboard has a **Pages personalization** panel with device background,
+widget text colour, widget accent colour, widget background colour and widget transparency.
+Those reach a widget by **overriding properties with specific well-known names**. There is
+no opt-in flag; declare the name and you receive the value.
+
+`WidgetPersonalizationPanelModel` in `modules/DashlcdUI.dll` exposes exactly:
+
+```
+customStyleEnabled
+textColorSupported     textColor
+accentColorSupported   accentColor
+accentColor2Supported  accentColor2
+                       backgroundColor
+                       transparency
+```
+
+and `HtmlWidgetCore.dll` carries the same list next to
+`widgetPersonalizationCustomStyleEnabled` / `widgetPersonalizationCustomStylePresent`.
+
+| Panel control | Widget property to declare |
+| --- | --- |
+| Widget text colour | `textColor` |
+| Widget accent colour | `accentColor` |
+| (second accent, where offered) | `accentColor2` |
+| Widget background colour | `backgroundColor` |
+| Widget transparency | `transparency` |
+| Widget background image/video | `backgroundMedia` |
+
+A property you do not declare simply cannot be driven — that control will appear to do
+nothing. Every shipped widget declares the whole set and groups them under a title ending
+in "Personalization" (`Widget Personalization`, `Clock Personalization`,
+`Sensor Personalization`); worth copying, since it is the only structural convention they
+all share.
+
+`transparency` is an **opacity** percentage despite the name: Corsair's widgets compute
+`opacity = value / 100` and ship a default of `80`. Apply it to the widget's own background
+layer, not to `body`, or the text fades with it.
+
+### Colours do not arrive as CSS
+
+This is the part that silently breaks. iCUE serialises colours the way Qt writes `QColor`:
+
+```xml
+<textColor>rgb(1 1 1)</textColor>                      <!-- white -->
+<accentColor>rgb(0.941176 0.556863 0.2)</accentColor>  <!-- orange -->
+<accentColor>hsv(0.681694 0.754467 0.941176)</accentColor>
+```
+
+Normalised 0..1 floats, and sometimes `hsv()`. Assigned straight into CSS:
+
+- `rgb(1 1 1)` is read as 0-255, giving near-black instead of white.
+- `hsv(…)` is not a CSS function, so the declaration is dropped entirely.
+
+Normalise before use. Since a component above 1 can only be the 0-255 form, the two are
+distinguishable. `src/js/color.js` in this repo does it, with tests.
+
+8-digit hex stays ambiguous: CSS reads `#RRGGBBAA`, Qt writes `#AARRGGBB`, and nothing in
+the string distinguishes them — pass it through rather than guessing.
 
 ## Clipboard and secure context
 
