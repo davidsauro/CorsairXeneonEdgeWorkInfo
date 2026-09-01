@@ -2,7 +2,12 @@
 
 A single-pane dashboard for the 2536×696 slot. Left third is a clock, the long-form date
 and current weather; right two thirds are Google Calendar day columns in an agenda layout
-with a red now-line.
+with a red now-line. Tap an event to see the invite and launch its meeting link.
+
+> **Calendar support needs a companion proxy.** Google serves ICS feeds without CORS
+> headers, so the widget cannot read them directly. Get it here:
+> **[expressProxyforGoogleCalendar](https://github.com/davidsauro/expressProxyforGoogleCalendar)**
+> — clone, `npm install`, `npm start`. The clock and weather work without it.
 
 ```
 ┌──────────────────────────┬─────────────────────────────────────────────────────┐
@@ -24,6 +29,24 @@ with a red now-line.
 ![Business Info Center at 2536x696](docs/preview.png)
 
 *Rendered at the real slot size with the bundled calendar fixture and live weather.*
+
+## Prerequisites
+
+The calendar half needs a companion proxy, because `calendar.google.com` sends no CORS
+headers and the widget's page origin is `file://`:
+
+**[expressProxyforGoogleCalendar](https://github.com/davidsauro/expressProxyforGoogleCalendar)**
+
+```bash
+git clone git@github.com:davidsauro/expressProxyforGoogleCalendar.git
+cd expressProxyforGoogleCalendar && npm install && npm start   # listens on :8010
+```
+
+It must be running whenever the widget is on screen, or the schedule shows `OFFLINE`. The
+widget's Proxy setting defaults to `http://localhost:8010`, which is where that project
+listens.
+
+Weather needs nothing — Open-Meteo allows cross-origin requests directly.
 
 ## Layout of the repo
 
@@ -47,24 +70,6 @@ tools/preview.sh         serve for browser development
 tools/serve.py           dual-stack static server used by preview.sh
 tools/deploy.sh          install into iCUE / uninstall
 ```
-
-## Prerequisites
-
-The calendar half needs a companion proxy, because `calendar.google.com` sends no CORS
-headers and the widget's page origin is `file://`:
-
-**[expressProxyforGoogleCalendar](https://github.com/davidsauro/expressProxyforGoogleCalendar)**
-
-```bash
-git clone git@github.com:davidsauro/expressProxyforGoogleCalendar.git
-cd expressProxyforGoogleCalendar && npm install && npm start   # listens on :8010
-```
-
-It must be running whenever the widget is on screen, or the schedule shows `OFFLINE`. The
-widget's Proxy setting defaults to `http://localhost:8010`, which is where that project
-listens.
-
-Weather needs nothing — Open-Meteo allows cross-origin requests directly.
 
 ## Develop
 
@@ -102,7 +107,7 @@ not notice new files otherwise. The widget then appears in the XENEON EDGE dashb
 | Setting | Notes |
 | --- | --- |
 | Calendar 1–3 | Paste the **secret address in iCal format** from Google Calendar → Settings → *your calendar* → Integrate calendar. Feeds are colour-coded blue / green / purple in that order. |
-| Proxy | Base URL of the local proxy. Default `http://localhost:8010`. |
+| Proxy | Base URL of the [companion proxy](https://github.com/davidsauro/expressProxyforGoogleCalendar). Default `http://localhost:8010`, which is where it listens. |
 | Days Shown | 1–5 day columns. |
 | Refresh | Poll interval, 1–60 min. |
 | Location | A **US ZIP code** (`02110`), a city name (`Boston`), or coordinates (`42.36,-71.06`). The resolved city is displayed on the widget so you can confirm it guessed right. |
