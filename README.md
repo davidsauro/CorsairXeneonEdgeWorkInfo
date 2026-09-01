@@ -68,6 +68,7 @@ test/                    unit tests + fixtures, no dependencies beyond node
 docs/icue-widget-api.md  the widget API, reverse-engineered from Corsair's own widgets
 tools/preview.sh         serve for browser development
 tools/serve.py           dual-stack static server used by preview.sh
+tools/logs.sh            what iCUE says about widgets, from its own log
 tools/deploy.sh          install into iCUE / uninstall
 ```
 
@@ -92,15 +93,60 @@ Size the window to 2536×696.
 all-day anchoring), the proxy URL rewriting, and the settings bridge (including that a ZIP
 code keeps its leading zero — `02110` coerced to a number becomes a Belgian postcode).
 
-## Install into iCUE
+## Run it on the device
+
+There is no build step — a widget is static files, and `deploy.sh` copies them into place.
 
 ```bash
-./tools/deploy.sh          # copies src/ into %APPDATA%\Corsair\CUE5\html_widgets\<guid>\
-./tools/deploy.sh --remove
+./tools/deploy.sh
 ```
 
-Then **fully quit iCUE from the tray icon and relaunch it** — it caches widgets and will
-not notice new files otherwise. The widget then appears in the XENEON EDGE dashboard editor.
+It generates a GUID folder on first run (kept in `.widget-id` so later deploys reuse it),
+validates the manifest, checks the proxy is reachable, and copies `src/` into
+`%APPDATA%\Corsair\CUE5\html_widgets\<guid>\`.
+
+**Then fully quit iCUE from the tray icon and relaunch it.** Closing the window is not
+enough; iCUE only scans for widgets at startup.
+
+Confirm iCUE accepted it — this is the step worth not skipping, because a rejected widget
+simply never appears in the picker with no visible explanation:
+
+```bash
+./tools/logs.sh | grep -i businessinfocenter
+```
+
+You want a matching pair for your GUID folder:
+
+```
+I cue.mod.widgets.html_cache: Found widget file: ".../html_widgets/<guid>/index.html" Starting validation...
+I cue.mod.widgets.html_cache: Widget file ".../html_widgets/<guid>/index.html" is succesfully validated
+```
+
+No lines at all means iCUE never saw the folder. "Starting validation" with no "validated"
+means the manifest or `index.html` was rejected.
+
+Finally, in iCUE: pick the XENEON EDGE, open the dashboard editor, add **Business Info
+Center** to the extra-wide (2536×696) slot, and fill in a calendar URL and a location.
+
+To iterate: `./tools/deploy.sh` again, then restart iCUE again. To uninstall:
+`./tools/deploy.sh --remove`.
+
+### Debugging on the device
+
+Widget `console.log` does **not** reach the iCUE log — verified against every log file — so
+don't plan around it. Two things that do work:
+
+```bash
+./tools/logs.sh --follow      # widget-related iCUE log lines, live
+```
+
+iCUE also appears to ship a remote DevTools hook: `iCUE.exe` contains a
+`cue.widgets.webengine_debug` logging category and the strings *"QtWebEngine remote
+debugging enabled on port:"* and *"Open in browser: http://localhost:"*. If you can trigger
+it you get a real Chrome DevTools session against the live widget. The exact switch is
+unconfirmed — try launching iCUE with `QT_LOGGING_RULES=cue.widgets.webengine_debug.debug=true`
+or with `QTWEBENGINE_REMOTE_DEBUGGING=9222` set — and the log prints the port it picked.
+See [docs/icue-widget-api.md](docs/icue-widget-api.md).
 
 ## Configure
 

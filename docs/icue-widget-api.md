@@ -359,8 +359,37 @@ There is no devtools panel. What works:
 - **Headless screenshots.** Windows Chrome can render the page at an exact slot size,
   which is the fastest way to check a layout:
   `chrome.exe --headless=new --window-size=2536,696 --screenshot=out.png <url>`
-- `console.log` output goes to the iCUE log under
-  `%APPDATA%\Corsair\CUE5\` — noisy, but it is there.
-- Render error states into the DOM. It is the only feedback channel on-device.
+- **`console.log` does not reach the iCUE log.** Verified by grepping every log in
+  `%LOCALAPPDATA%\Corsair\Logs\CUE5\`: not one line of JS console output appears. Do not
+  plan a debugging strategy around it.
+- **The iCUE log does tell you whether your widget was accepted.** Every widget it finds,
+  sideloaded ones included, produces a pair on the `cue.mod.widgets.html_cache` channel:
+
+  ```
+  I cue.mod.widgets.html_cache: Found widget file: ".../html_widgets/<guid>/index.html" Starting validation...
+  I cue.mod.widgets.html_cache: Widget file ".../html_widgets/<guid>/index.html" is succesfully validated
+  ```
+
+  No pair at all means iCUE never saw your folder. A "Starting validation" with no
+  "validated" means the manifest or the HTML was rejected. Translation problems surface
+  separately on `cue.html.translation`.
+- **Remote DevTools appear to be available.** `iCUE.exe` contains a
+  `cue.widgets.webengine_debug` logging category alongside these strings:
+
+  ```
+  QtWebEngine remote debugging enabled on port:
+  Open in browser: http://localhost:
+  Failed to find available port for QtWebEngine remote debugging. All ports are busy.
+  ```
+
+  It also references `QTWEBENGINE_REMOTE_DEBUGGING` and `QT_LOGGING_RULES`. So iCUE has a
+  built-in hook that exposes a real Chrome DevTools endpoint against the live widget. The
+  exact trigger is not confirmed; the two candidates are enabling that logging category
+  (`QT_LOGGING_RULES=cue.widgets.webengine_debug.debug=true`) or setting
+  `QTWEBENGINE_REMOTE_DEBUGGING` yourself before launching iCUE. Either way the log prints
+  the port it chose. This is worth ten minutes to get working before debugging anything
+  hard on-device.
+- Render error states into the DOM. Assume it is your only feedback channel until the
+  above is working.
 - iCUE caches widgets aggressively: fully quit from the tray icon and relaunch after
   changing files. Reinstalling into a fresh folder GUID forces a clean read.
