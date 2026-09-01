@@ -2,7 +2,8 @@
  * feed-url.js — turn a calendar address the user pasted into one the widget can fetch.
  *
  * Google's ICS host sends no CORS headers, so calendar.google.com addresses are rewritten
- * onto the local proxy (/home/daves/localproxy), which maps
+ * onto the companion proxy at github.com/davidsauro/expressProxyforGoogleCalendar, which
+ * maps
  *   <base>/proxy/calendar/<rest>  ->  https://calendar.google.com/calendar/<rest>
  *
  * Anything else is passed through untouched, so a feed you already host with permissive

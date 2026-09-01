@@ -50,14 +50,20 @@ tools/deploy.sh          install into iCUE / uninstall
 
 ## Prerequisites
 
-The calendar half depends on the local proxy at `/home/daves/localproxy`, because
-`calendar.google.com` sends no CORS headers and the widget's page origin is `file://`.
+The calendar half needs a companion proxy, because `calendar.google.com` sends no CORS
+headers and the widget's page origin is `file://`:
+
+**[expressProxyforGoogleCalendar](https://github.com/davidsauro/expressProxyforGoogleCalendar)**
 
 ```bash
-cd /home/daves/localproxy && node proxy.js    # listens on :8010
+git clone git@github.com:davidsauro/expressProxyforGoogleCalendar.git
+cd expressProxyforGoogleCalendar && npm install && npm start   # listens on :8010
 ```
 
-It must be running whenever the widget is on screen, or the schedule shows `OFFLINE`.
+It must be running whenever the widget is on screen, or the schedule shows `OFFLINE`. The
+widget's Proxy setting defaults to `http://localhost:8010`, which is where that project
+listens.
+
 Weather needs nothing — Open-Meteo allows cross-origin requests directly.
 
 ## Develop
@@ -165,15 +171,13 @@ curl -s http://localhost:8010/health          # expect: ok
 curl -s http://localhost:8010/tiny.ics        # expect: a one-event VCALENDAR
 ```
 
+Start it with `npm start` in the
+[proxy repo](https://github.com/davidsauro/expressProxyforGoogleCalendar).
+
 **The proxy runs in WSL but iCUE runs on Windows.** That works, but only via the hostname
 `localhost` — Windows resolves it to the IPv6 loopback, which WSL forwards. Literal
 `127.0.0.1:8010` from Windows does *not* reach it. Keep the Proxy setting as
 `http://localhost:8010`.
-
-**The proxy prints no upstream log lines.** `proxy.js` uses `onProxyReq` / `onProxyRes` /
-`logLevel`, which are http-proxy-middleware v2 options; the installed version is v4, where
-they moved under an `on: { … }` key and are otherwise ignored. Proxying still works — only
-that logging is silently dropped.
 
 **Weather is for the wrong place.** Open-Meteo's geocoder resolves US ZIP codes and city
 names, but **not** Canadian or UK postcodes, and an ambiguous name like `Springfield` gets

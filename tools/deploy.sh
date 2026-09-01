@@ -68,8 +68,8 @@ echo "installed to $TARGET"
 if curl -s -m 2 -o /dev/null "http://localhost:8010/health"; then
   echo "proxy: reachable on http://localhost:8010"
 else
-  echo "proxy: NOT reachable on http://localhost:8010 — start it with"
-  echo "       (cd /home/daves/localproxy && node proxy.js)"
+  echo "proxy: NOT reachable on http://localhost:8010 — start it with 'npm start' in"
+  echo "       github.com/davidsauro/expressProxyforGoogleCalendar"
   echo "       Google Calendar feeds will show OFFLINE until it is running."
 fi
 
