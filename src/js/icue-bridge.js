@@ -25,7 +25,27 @@
   var PROPERTY_NAMES = [];
   var DECLARED_DEFAULTS = {};
 
-  var insideICUE = typeof root.tr === "function";
+  /**
+   * Resolve a host-injected global by name.
+   *
+   * The same hazard that applies to property globals applies to the host's own: depending
+   * on iCUE version they may be `let`/`const`, which puts them in the global *lexical*
+   * scope where a bare identifier resolves but `globalThis.name` is undefined. Reading
+   * `root.iCUE_initialized` directly is therefore unreliable, and getting it wrong means
+   * the widget waits forever for an init event that already fired.
+   */
+  function hostValue(name) {
+    try {
+      if (root[name] !== undefined) return root[name];
+    } catch (error) {}
+    try {
+      return new Function("return typeof " + name + " !== 'undefined' ? " + name + " : undefined;")();
+    } catch (error) {
+      return undefined;
+    }
+  }
+
+  var insideICUE = typeof hostValue("tr") === "function";
 
   /**
    * data-default holds an expression iCUE evaluates, not a literal. Outside iCUE we
@@ -155,18 +175,29 @@
   var language = "en";
   function refreshLanguage() {
     try {
-      if (root.iCUE && root.iCUE.iCUELanguage) language = String(root.iCUE.iCUELanguage);
+      var api = hostValue("iCUE");
+      if (api && api.iCUELanguage) language = String(api.iCUELanguage);
     } catch (error) {}
     return language;
   }
 
-  /** tr() returns a Promise and only exists inside iCUE; fall back to the key itself. */
+  /**
+   * tr() returns a Promise and only exists inside iCUE; fall back to the key itself.
+   *
+   * Raced against a timeout: tr() is a host round-trip, and a promise that never settles
+   * would stall anything waiting on it. Nothing may block rendering on a translation.
+   */
   function translate(key) {
     try {
-      if (typeof root.tr === "function") {
-        return Promise.resolve(root.tr(key)).then(function (value) {
+      var tr = hostValue("tr");
+      if (typeof tr === "function") {
+        var asked = Promise.resolve(tr(key)).then(function (value) {
           return value == null || value === "" ? key : String(value);
         }, function () { return key; });
+        var timeout = new Promise(function (resolve) {
+          setTimeout(function () { resolve(key); }, TRANSLATE_TIMEOUT_MS);
+        });
+        return Promise.race([asked, timeout]);
       }
     } catch (error) {}
     return Promise.resolve(key);
@@ -202,7 +233,8 @@
   function storageKey(name) {
     var id = "widget";
     try {
-      if (typeof root.uniqueId !== "undefined" && root.uniqueId) id = String(root.uniqueId);
+      var unique = hostValue("uniqueId");
+      if (unique) id = String(unique);
     } catch (error) {}
     return id + ":" + name;
   }
@@ -230,8 +262,12 @@
    *   onReady   runs exactly once, when the host is initialized (or immediately outside iCUE)
    *   onUpdate  runs on every settings change; receives (current, previous) snapshots
    */
+  var WATCHDOG_MS = 2500;
+  var TRANSLATE_TIMEOUT_MS = 4000;
+
   function start(handlers) {
     var booted = false;
+    var lateBoot = false;
     var last = null;
 
     function ready() {
@@ -239,7 +275,12 @@
       booted = true;
       refreshLanguage();
       last = snapshot();
-      try { handlers.onReady && handlers.onReady(last); } catch (error) { console.error(error); }
+      diagnostics.bootedVia = lateBoot ? "watchdog" : (insideICUE ? "icue" : "browser");
+      try {
+        handlers.onReady && handlers.onReady(last);
+      } catch (error) {
+        recordError("onReady", error);
+      }
     }
 
     function update() {
@@ -247,7 +288,11 @@
       var previous = last;
       var current = snapshot();
       last = current;
-      try { handlers.onUpdate && handlers.onUpdate(current, previous); } catch (error) { console.error(error); }
+      try {
+        handlers.onUpdate && handlers.onUpdate(current, previous);
+      } catch (error) {
+        recordError("onUpdate", error);
+      }
     }
 
     try {
@@ -255,14 +300,12 @@
     } catch (error) {}
 
     root.addEventListener("resize", function () {
-      try { handlers.onResize && handlers.onResize(slot()); } catch (error) { console.error(error); }
+      try { handlers.onResize && handlers.onResize(slot()); } catch (error) { recordError("onResize", error); }
     });
 
     function maybeReady() {
-      var initialized = false;
-      try { initialized = typeof root.iCUE_initialized !== "undefined" && !!root.iCUE_initialized; } catch (error) {}
       // Outside iCUE (plain browser preview) nothing will ever initialize us, so boot anyway.
-      if (initialized || !insideICUE) ready();
+      if (!insideICUE || !!hostValue("iCUE_initialized")) ready();
     }
 
     if (document.readyState === "loading") {
@@ -270,10 +313,47 @@
     } else {
       maybeReady();
     }
+
+    /*
+     * Watchdog. If onICUEInitialized already fired before this script assigned
+     * icueEvents, and iCUE_initialized cannot be read, nothing would ever boot and the
+     * page would sit on its static markup forever — silently, since widget console output
+     * does not reach any log. Booting late with default values beats never booting.
+     */
+    setTimeout(function () {
+      if (!booted) {
+        lateBoot = true;
+        ready();
+      }
+    }, WATCHDOG_MS);
   }
+
+  var diagnostics = { errors: [], bootedVia: null };
+
+  function recordError(where, error) {
+    var message = error && error.message ? error.message : String(error);
+    diagnostics.errors.push({
+      where: where,
+      message: message,
+      stack: error && error.stack ? String(error.stack).split("\n").slice(0, 4).join(" | ") : ""
+    });
+    if (diagnostics.errors.length > 8) diagnostics.errors.shift();
+    try { console.error("[" + where + "]", error); } catch (ignored) {}
+    try { if (typeof root.onIcueDiagnostics === "function") root.onIcueDiagnostics(); } catch (ignored) {}
+  }
+
+  root.addEventListener("error", function (event) {
+    recordError("window", (event && event.error) || (event && event.message) || "script error");
+  });
+  root.addEventListener("unhandledrejection", function (event) {
+    recordError("promise", (event && event.reason) || "unhandled rejection");
+  });
 
   root.ICUE = {
     insideICUE: insideICUE,
+    hostValue: hostValue,
+    diagnostics: diagnostics,
+    recordError: recordError,
     propertyNames: PROPERTY_NAMES.slice(),
     declaredDefaults: DECLARED_DEFAULTS,
     prop: prop,

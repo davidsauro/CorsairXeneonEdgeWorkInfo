@@ -303,6 +303,7 @@
       setText("weatherPlace", state.weatherError || "");
       setText("weatherDetail", "");
       el("forecastStrip").textContent = "";
+      renderDiagnostics();
       return;
     }
 
@@ -368,6 +369,8 @@
       cell.appendChild(condition);
       strip.appendChild(cell);
     });
+
+    renderDiagnostics();
   }
 
   function formatIsoWallTime(iso) {
@@ -887,6 +890,73 @@
     return cachedRowHeight || ROW_HEIGHT_FALLBACK;
   }
 
+  /* ------------------------------------------------------------- diagnostics */
+
+  /**
+   * The device has no console, and widget console.log reaches no iCUE log file, so the
+   * only way to see what the widget thinks is happening is to put it on the screen.
+   *
+   * Shown when the Diagnostics switch is on, and forced on if anything has thrown — a
+   * silent failure would otherwise be indistinguishable from an empty calendar.
+   */
+  function renderDiagnostics() {
+    var node = el("diag");
+    if (!node) return;
+
+    var errors = ICUE.diagnostics.errors;
+    var wanted = ICUE.bool("showDiagnostics", false) || errors.length > 0;
+    node.hidden = !wanted;
+    if (!wanted) return;
+
+    var lines = [];
+    lines.push("booted via      : " + (ICUE.diagnostics.bootedVia || "(not booted)"));
+    lines.push("insideICUE      : " + ICUE.insideICUE);
+    lines.push("tr()            : " + typeof ICUE.hostValue("tr"));
+    lines.push("iCUE            : " + typeof ICUE.hostValue("iCUE"));
+    lines.push("iCUE_initialized: " + String(ICUE.hostValue("iCUE_initialized")));
+    lines.push("uniqueId        : " + String(ICUE.hostValue("uniqueId")));
+    lines.push("language        : " + ICUE.language);
+
+    var pluginNames = "(none)";
+    try {
+      if (globalThis.plugins) pluginNames = Object.keys(globalThis.plugins).join(", ") || "(empty)";
+    } catch (error) {
+      pluginNames = "(unreadable)";
+    }
+    lines.push("plugins         : " + pluginNames);
+
+    // Which settings actually arrived, and whether each came from the host or a default.
+    var declared = ICUE.declaredDefaults;
+    var props = ICUE.propertyNames.map(function (name) {
+      var live;
+      try { live = globalThis[name]; } catch (error) { live = undefined; }
+      var lexical = ICUE.hostValue(name);
+      var source = live !== undefined ? "host" : (lexical !== undefined ? "lexical" : "default");
+      var value = ICUE.prop(name, "");
+      if (/^calendarUrl/.test(name) && value) value = String(value).slice(0, 34) + "…";
+      return "  " + name + " [" + source + "] = " + JSON.stringify(value);
+    });
+    lines.push("properties      :");
+    lines = lines.concat(props);
+
+    lines.push("calendar        : " + state.status + (state.message ? " — " + state.message : ""));
+    lines.push("events parsed   : " + state.events.length);
+    lines.push("weather         : " + (state.weather ? "ok" : "none")
+      + (state.weatherError ? " — " + state.weatherError : ""));
+
+    if (errors.length) {
+      lines.push("errors          :");
+      errors.forEach(function (entry) {
+        lines.push("  [" + entry.where + "] " + entry.message);
+        if (entry.stack) lines.push("      " + entry.stack);
+      });
+    } else {
+      lines.push("errors          : none");
+    }
+
+    el("diagBody").textContent = lines.join("\n");
+  }
+
   /* ------------------------------------------------------------------ status */
 
   function renderStatus() {
@@ -913,6 +983,7 @@
     document.body.setAttribute("data-status", state.status);
     renderStatus();
     renderAgenda();
+    renderDiagnostics();
   }
 
   /* --------------------------------------------------------------- lifecycle */
@@ -926,44 +997,78 @@
     }, minutes * 60000);
   }
 
+  /** Each half is independent: a calendar failure must not stop the weather. */
   function refreshAll() {
-    refreshCalendars();
-    refreshWeather();
+    guard("refreshCalendars", refreshCalendars);
+    guard("refreshWeather", refreshWeather);
+  }
+
+  /** Run a step, record anything it throws, and keep going. */
+  function guard(where, fn) {
+    try {
+      return fn();
+    } catch (error) {
+      ICUE.recordError(where, error);
+      renderDiagnostics();
+      return undefined;
+    }
   }
 
   ICUE.start({
     onReady: function () {
-      var cachedCalendar = ICUE.storageGet("calendar", null);
-      if (cachedCalendar && Array.isArray(cachedCalendar.events) && cachedCalendar.events.length) {
-        state.events = cachedCalendar.events;
-        state.updatedAt = cachedCalendar.updatedAt || 0;
-        state.status = "stale";
-      }
-      var cachedWeather = ICUE.storageGet("weather", null);
-      if (cachedWeather && cachedWeather.forecast) state.weather = cachedWeather.forecast;
+      globalThis.onIcueDiagnostics = renderDiagnostics;
 
-      applyAppearance();
-      el("refreshButton").addEventListener("click", refreshAll);
-      el("detailClose").addEventListener("click", closeDetail);
-      el("detailScrim").addEventListener("click", closeDetail);
-      document.addEventListener("keydown", function (event) {
-        if (event.key === "Escape") closeDetail();
+      guard("restoreCache", function () {
+        var cachedCalendar = ICUE.storageGet("calendar", null);
+        if (cachedCalendar && Array.isArray(cachedCalendar.events) && cachedCalendar.events.length) {
+          state.events = cachedCalendar.events;
+          state.updatedAt = cachedCalendar.updatedAt || 0;
+          state.status = "stale";
+        }
+        var cachedWeather = ICUE.storageGet("weather", null);
+        if (cachedWeather && cachedWeather.forecast) state.weather = cachedWeather.forecast;
       });
 
+      guard("applyAppearance", applyAppearance);
+
+      guard("wireEvents", function () {
+        el("refreshButton").addEventListener("click", refreshAll);
+        el("detailClose").addEventListener("click", closeDetail);
+        el("detailScrim").addEventListener("click", closeDetail);
+        document.addEventListener("keydown", function (event) {
+          if (event.key === "Escape") closeDetail();
+        });
+      });
+
+      /*
+       * Draw immediately, using the translation keys as their own placeholders. Waiting on
+       * translation before the first paint means any stall there leaves the page sitting on
+       * its static markup — which is exactly what a silent failure looks like on-device.
+       */
+      guard("tickClock", tickClock);
+      guard("render", render);
+      guard("renderWeather", renderWeather);
+
       ICUE.translateDom().then(function () {
-        tickClock();
-        render();
-        renderWeather();
+        guard("render", render);
+        guard("renderWeather", renderWeather);
+      }, function (error) {
+        ICUE.recordError("translateDom", error);
+        renderDiagnostics();
       });
 
       refreshAll();
-      scheduleRefresh();
+      guard("scheduleRefresh", scheduleRefresh);
 
       // Moves the now-line and re-dims events that have just ended.
       timers.minute = setInterval(function () {
-        renderStatus();
-        renderAgenda();
+        guard("minuteTick", function () {
+          renderStatus();
+          renderAgenda();
+        });
       }, 60000);
+
+      renderDiagnostics();
     },
 
     onUpdate: function (current, previous) {
@@ -974,9 +1079,10 @@
         ["calendarUrl1", "calendarUrl2", "calendarUrl3", "proxyBase", "agendaDays", "timeZone"]);
       var weatherChanged = ICUE.changed(previous, current, ["weatherQuery", "temperatureUnits"]);
 
-      if (calendarChanged) refreshCalendars(); else render();
-      if (weatherChanged) refreshWeather(); else renderWeather();
-      if (ICUE.changed(previous, current, ["refreshMinutes"])) scheduleRefresh();
+      if (calendarChanged) guard("refreshCalendars", refreshCalendars); else guard("render", render);
+      if (weatherChanged) guard("refreshWeather", refreshWeather); else guard("renderWeather", renderWeather);
+      if (ICUE.changed(previous, current, ["refreshMinutes"])) guard("scheduleRefresh", scheduleRefresh);
+      renderDiagnostics();
     },
 
     onResize: function () {

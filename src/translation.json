@@ -77,7 +77,10 @@
       "Widget Personalization": "Widget Personalization",
       "Secondary Accent": "Secondary Accent",
       "Widget Transparency": "Widget Transparency",
-      "These follow the device Pages personalization settings unless you override them here.": "These follow the device Pages personalization settings unless you override them here."
+      "These follow the device Pages personalization settings unless you override them here.": "These follow the device Pages personalization settings unless you override them here.",
+      "Diagnostics": "Diagnostics",
+      "Troubleshooting": "Troubleshooting",
+      "Shows the widget's own state on screen: how it started, which settings arrived, and any errors.": "Shows the widget's own state on screen: how it started, which settings arrived, and any errors."
     }
   }
 }

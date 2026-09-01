@@ -918,3 +918,43 @@ button { font: inherit; color: inherit; background: none; border: none; padding:
   .linkButton { min-width: 11vh; font-size: 2.1vh; }
   #detailRight { display: none; }
 }
+
+/* ============================================================== diagnostics */
+
+/*
+ * On-screen state readout. There is no console on the device and widget console.log
+ * reaches no log file, so this is the only way to see what the widget believes.
+ */
+#diag {
+  position: fixed;
+  inset: auto 2vh 2vh auto;
+  z-index: 100;
+  max-width: 62vw;
+  max-height: 88vh;
+  overflow: auto;
+  padding: 1.6vh 2vh;
+  border-radius: 1.2vh;
+  border: 1px solid color-mix(in srgb, var(--now) 60%, transparent);
+  background: color-mix(in srgb, #000 88%, transparent);
+  color: #dfe3e6;
+  user-select: text;
+  -webkit-user-select: text;
+}
+#diag[hidden] { display: none; }
+
+#diagTitle {
+  font-family: var(--sans-bold);
+  font-size: 2.1vh;
+  letter-spacing: 0.16em;
+  color: var(--now);
+  margin-bottom: 0.8vh;
+}
+
+#diagBody {
+  margin: 0;
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 1.85vh;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

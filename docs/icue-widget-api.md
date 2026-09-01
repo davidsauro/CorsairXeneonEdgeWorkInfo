@@ -217,17 +217,35 @@ if (iCUE_initialized) onReady();
 `onDataUpdated` gives you no diff — snapshot the properties yourself and compare, so an
 unrelated colour tweak doesn't trigger a network refetch.
 
-## Two gotchas that will cost you an afternoon
+## Three gotchas that will cost you an afternoon
 
-1. **Property globals may be lexically scoped.** Depending on host version they are
-   injected as `let`/`const`, so `globalThis[name]` is `undefined` even though `name`
-   resolves fine. Re-expose them with an accessor built from
-   `new Function("return typeof " + name + " !== 'undefined' ? " + name + " : undefined;")`.
+1. **Injected globals may be lexically scoped**, and this applies to the host's own
+   globals as much as to your properties. Depending on version they are `let`/`const`,
+   which puts them in the global *lexical* scope: a bare identifier resolves, but
+   `globalThis.name` is `undefined`. Read every one of them through
+
+   ```js
+   new Function("return typeof " + name + " !== 'undefined' ? " + name + " : undefined;")()
+   ```
+
+   with a `globalThis[name]` fast path. This bites hardest on `iCUE_initialized`: read it
+   as `globalThis.iCUE_initialized` and you get `undefined`, conclude the host is not ready,
+   and wait for an `onICUEInitialized` that already fired. The widget then sits on its
+   static markup forever, with no error anywhere. Note that Corsair's own widgets always
+   write `if (iCUE_initialized)` as a bare identifier — that is not stylistic.
 
 2. **Every element `id` becomes a `window` global.** A property named the same as an
    element id reads back as a DOM `Node`. Guard with `value instanceof Node`.
 
-Both are handled in [`src/js/icue-bridge.js`](../src/js/icue-bridge.js).
+3. **Never block the first paint on `tr()`.** It is a host round-trip returning a promise.
+   Gate rendering on it and any stall leaves the page showing its raw HTML — which looks
+   exactly like a widget that failed to load. Use the translation key as its own
+   placeholder, render immediately, and replace the text when the translation arrives.
+   Race `tr()` against a timeout.
+
+All three are handled in [`src/js/icue-bridge.js`](../src/js/icue-bridge.js), which also
+runs a watchdog: if nothing has booted a couple of seconds after DOM ready, it boots with
+defaults rather than leaving a dead widget.
 
 ## Sensor / media / FPS plugins
 
@@ -434,7 +452,16 @@ There is no devtools panel. What works:
   ```
   I cue.mod.widgets.html_cache: Found widget file: ".../html_widgets/<guid>/index.html" Starting validation...
   I cue.mod.widgets.html_cache: Widget file ".../html_widgets/<guid>/index.html" is succesfully validated
+  I cue.js.executor: Loaded QML plugin: "widgetbuilder.linkprovider" as plugins. "Linkprovider"
   ```
+
+  The `cue.js.executor` channel also confirms each `required_plugins` entry that loaded and
+  the exact name it took under `window.plugins` — the only authoritative source for that
+  name.
+
+  Two log lines that look alarming and are not: a `TypeError` about `rowCount` from
+  `TabButtonsEditorSetting.qml`, and `cue.html.translation: Empty translation for language:
+  "en_FAKE"`. Both appear for Corsair's own widgets and are unrelated to yours.
 
   No pair at all means iCUE never saw your folder. A "Starting validation" with no
   "validated" means the manifest or the HTML was rejected. Translation problems surface
@@ -455,6 +482,19 @@ There is no devtools panel. What works:
   `QTWEBENGINE_REMOTE_DEBUGGING` yourself before launching iCUE. Either way the log prints
   the port it chose. This is worth ten minutes to get working before debugging anything
   hard on-device.
+- **Build an on-screen readout.** With no console and no log, the widget has to report its
+  own state: how it booted, whether `tr` and `iCUE_initialized` were visible, which
+  properties arrived and whether each came from the host or a declared default, and any
+  captured errors. Hook `window.onerror` and `unhandledrejection` into it and force it
+  visible when something throws — a silent failure is otherwise indistinguishable from an
+  empty calendar. This repo puts it behind a `showDiagnostics` switch; see
+  `renderDiagnostics()` in `src/js/app.js`.
+- **Simulate the host in the browser.** Preview alone cannot catch integration bugs,
+  because outside iCUE the bridge takes a different boot path entirely. `tools/make-sim.py`
+  generates a page that fakes the host: `tr()` present, properties as injected globals,
+  colours in Qt's serialisation, and `iCUE_initialized` as a `const` so it is absent from
+  `window`. That combination reproduces the dead-widget failure in a normal browser with
+  devtools attached.
 - Render error states into the DOM. Assume it is your only feedback channel until the
   above is working.
 - iCUE caches widgets aggressively: fully quit from the tray icon and relaunch after

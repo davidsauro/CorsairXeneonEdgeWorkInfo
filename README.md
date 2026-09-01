@@ -70,6 +70,7 @@ docs/icue-widget-api.md  the widget API, reverse-engineered from Corsair's own w
 tools/preview.sh         serve for browser development
 tools/serve.py           dual-stack static server used by preview.sh
 tools/logs.sh            what iCUE says about widgets, from its own log
+tools/make-sim.py        generates a fake-iCUE-host page for browser debugging
 tools/deploy.sh          install into iCUE / uninstall
 ```
 
@@ -134,12 +135,36 @@ To iterate: `./tools/deploy.sh` again, then restart iCUE again. To uninstall:
 
 ### Debugging on the device
 
-Widget `console.log` does **not** reach the iCUE log — verified against every log file — so
-don't plan around it. Two things that do work:
+Widget `console.log` reaches **no log file** — verified against every log in
+`%LOCALAPPDATA%\Corsair\Logs\CUE5`. So the widget reports its own state instead.
+
+**Turn on `Diagnostics`** in the widget's settings (Troubleshooting group). A readout
+appears on the widget showing how it booted, whether `tr` and `iCUE_initialized` were
+visible, every setting with whether it came from the host or a declared default, the
+calendar and weather status, and any captured errors with file and line. It also appears
+**automatically** whenever something throws, even with the switch off — a silent failure
+should never look like an empty calendar.
+
+The iCUE log still tells you whether the install was accepted and which plugins loaded:
 
 ```bash
 ./tools/logs.sh --follow      # widget-related iCUE log lines, live
 ```
+
+Two lines there look alarming and are noise, present for Corsair's own widgets too: a
+`TypeError` about `rowCount` from `TabButtonsEditorSetting.qml`, and
+`Empty translation for language: "en_FAKE"`.
+
+**Reproduce host bugs in the browser.** Plain preview can't catch them, because outside
+iCUE the bridge takes a different boot path:
+
+```bash
+python3 tools/make-sim.py --diagnostics
+# then open http://localhost:8123/src/sim.local.html
+```
+
+That fakes the real host: `tr()` present, settings as injected globals, colours in Qt's
+serialisation, and `iCUE_initialized` as a `const` so it's absent from `window`.
 
 iCUE also appears to ship a remote DevTools hook: `iCUE.exe` contains a
 `cue.widgets.webengine_debug` logging category and the strings *"QtWebEngine remote
@@ -263,6 +288,13 @@ see when this happens — put coordinates in the Location field instead, e.g. `4
 
 **A change to the widget does nothing.** iCUE caches aggressively. Quit it from the tray
 icon — not just closing the window — then relaunch.
+
+**The widget shows only placeholder dashes, a degree sign and a cloud.** That is the
+static HTML — nothing ever ran. Turn on `Diagnostics`; `booted via` tells you whether the
+bridge started at all. Historically this was caused by reading `iCUE_initialized` off
+`globalThis` when the host had injected it as a `const`, so the widget waited forever for
+an init event that had already fired. There is now a watchdog that boots anyway after a
+couple of seconds.
 
 **A Pages personalization setting does nothing.** Check the property is declared in
 `index.html` — an undeclared name is simply never delivered. If a colour applies but comes

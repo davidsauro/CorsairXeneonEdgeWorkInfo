@@ -43,6 +43,11 @@
       data-values="[{'key':'12h','value':tr('12h')},{'key':'24h','value':tr('24h')}]"
       data-default="iCUE.default24HourFormat()" />
 
+<!-- Diagnostics. On-device there is no console and widget console.log reaches no log
+     file, so the widget has to report its own state. -->
+<meta name="x-icue-property" content="showDiagnostics"
+      data-label="tr('Diagnostics')" data-type="switch" data-default="false" />
+
 <!-- Personalization. These five names are the ones iCUE's page-level "Pages
      personalization" panel drives (WidgetPersonalizationPanelModel: textColor,
      accentColor, accentColor2, backgroundColor, transparency). A widget that does not
@@ -75,6 +80,11 @@
   {
     "title": "tr('Clock')",
     "properties": ["timeZone", "timeFormat"]
+  },
+  {
+    "title": "tr('Troubleshooting')",
+    "properties": ["showDiagnostics"],
+    "info": "tr('Shows the widget\\'s own state on screen: how it started, which settings arrived, and any errors.')"
   },
   {
     "title": "tr('Widget Personalization')",
@@ -229,6 +239,13 @@
 </div>
 
 <script src="js/color.js"></script>
+<!-- Diagnostics readout. Always present; shown when the Diagnostics switch is on, and
+     forced visible if anything throws, so a silent failure cannot look like an empty page. -->
+<div id="diag" hidden>
+  <div id="diagTitle">DIAGNOSTICS</div>
+  <pre id="diagBody"></pre>
+</div>
+
 <script src="js/icue-bridge.js"></script>
 <script src="js/feed-url.js"></script>
 <script src="js/links.js"></script>
